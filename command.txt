@@ -1,0 +1,36 @@
+    1  cd chattingo/
+    2  docker ps
+    3  docker ps -a
+    4  docker image prune -f
+    5  docker ps
+    6  docker images
+    7  docker ps
+    8  docker compose-down
+    9  docker-compose down
+   10  docker-compose up -d --build --no-cache
+   11  docker images
+   12  docker ps
+   13  docker images
+   14  docker ps
+   15  docker-compose up fronted
+   16  docker-compose up frontend
+   17  docker ps
+   18  cd backend/
+   19  vi .env
+   20  cd ..
+   21  curl -X POST http://localhost:8080/auth/signup   -H "Content-Type: application/json"   -d '{"name":"Alice", "email":"alice@example.com", "password":"123456"}'
+   22  cd backend/
+   23  vi .env
+   24  cd ..
+   25  docker-compose restart backend
+   26  docker ps
+   27  vi .env
+   28  cd backend/
+   29  vi .env
+   30  docker-compose restart backend
+   31  docker ps
+   32  cat .env
+   33  cd ..
+   34  docker-compose down
+   35  docker-compose up -d --build backend
+   36  history > command.txt
