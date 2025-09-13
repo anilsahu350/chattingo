@@ -1,0 +1,115 @@
+pipeline {
+    agent any
+
+    tools {
+        nodejs 'node23'
+        maven 'maven3'
+    }
+
+    stages {
+        stage("Clean Workspace") {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage("Clean Dangling Containers") {
+            steps {
+                script {
+                    sh '''
+                        echo "Removing stopped containers..."
+                        docker container prune -f
+                    '''
+                }
+            }
+        }
+
+        stage('Git Checkout') {
+            steps {
+                git branch: 'dev', url: 'https://github.com/anilsahu350/chattingo.git'
+            }
+        }
+
+        stage('Frontend Compilation') {
+            steps {
+                dir('frontend') {
+                    sh 'find . -name "*.js" -exec node --check {} +'
+                }
+            }
+        }
+
+        stage('Backend Compilation') {
+            steps {
+                dir('backend') {
+                    sh 'mvn compile'
+                }
+            }
+        }
+
+        stage('Build Backend Docker Image') {
+            steps {
+                dir('backend') {
+                    sh 'docker build -t chattingo_backend:latest .'
+                }
+            }
+        }
+
+        stage('Build Frontend Docker Image') {
+            steps {
+                dir('frontend') {
+                    sh 'docker build -t chattingo_frontend:latest .'
+                }
+            }
+        }
+
+        stage('Filesystem Scan') {
+            steps {
+                sh 'trivy fs --format table -o fs-report.html .'
+            }
+        }
+
+        stage('Push Backend Docker Image') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred') {
+                        sh 'docker tag chattingo_backend:latest anilsahu350/chattingo_backend:latest'
+                        sh 'trivy image --format table -o backend-image-report.html anilsahu350/chattingo_backend:latest'
+                        sh 'docker push anilsahu350/chattingo_backend:latest'
+                    }
+                }
+            }
+        }
+
+        stage('Push Frontend Docker Image') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred') {
+                        sh 'docker tag chattingo_frontend:latest anilsahu350/chattingo_frontend:latest'
+                        sh 'trivy image --format table -o frontend-image-report.html anilsahu350/chattingo_frontend:latest'
+                        sh 'docker push anilsahu350/chattingo_frontend:latest'
+                    }
+                }
+            }
+        }
+
+        stage("Deploy to Container") {
+            steps {
+                sh 'docker-compose up -d'
+            }
+        }
+
+        stage('Docker Image Cleanup') {
+            steps {
+                script {
+                    sh "docker image prune -af"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: '*.html', fingerprint: true
+        }
+    }
+}
